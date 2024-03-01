@@ -2,15 +2,32 @@ import React, { useEffect, useState } from 'react';
 import styles from '../styles/Blog.module.css'
 import Link from 'next/link';
 import * as fs from 'fs';
+import InfiniteScroll from 'react-infinite-scroll-component';
 // Step 1: Collect all the files from blogdata directory
 // Step 2: Iterate through and display them
 const Blog = (props) => {
+  const[count,setCount]=useState(2)
   const [blogs, setBlogs] = useState(props.allBlogs)
-
+  const fetchData = async() => {
+    let d=await fetch(`http://localhost:3000/api/blogs/?count=${count+2}`)
+    setCount(count+2)
+    let data=await d.json()
+    setBlogs(data)
+  };
   return <div className={styles.container}>
     <main className={styles.main}>
-      {
-        blogs.map(blogItem => {
+      <InfiniteScroll
+        dataLength={blogs.length} //This is important field to render the next data
+        next={fetchData}
+        hasMore={props.allCont!==blogs.length}
+        loader={<h4>Loading...</h4>}
+        endMessage={
+          <p style={{ textAlign: 'center' }}>
+            <b>Yay! You have seen it all</b>
+          </p>
+        }
+      >
+        {blogs.map(blogItem => {
           return (
             <div key={blogItem.slug} className={styles.blogItem}>
               <Link href={`/blogpost/${blogItem.slug}`}>
@@ -20,7 +37,9 @@ const Blog = (props) => {
             </div>
           )
         })
-      }
+        }
+      </InfiniteScroll>
+
 
     </main>
   </div>
@@ -38,9 +57,10 @@ const Blog = (props) => {
 export async function getStaticProps() {
   // Fetch data from external API
   let data = await fs.promises.readdir("blogdata")
+  let allCont=data.length
   let myFile;
   let allBlogs = []
-  for (let i = 0; i < data.length; i++) {
+  for (let i = 0; i < 2; i++) {
     const item = data
     console.log(item)
     myFile = await fs.promises.readFile("blogdata/" + data[i], "utf-8")
@@ -48,7 +68,7 @@ export async function getStaticProps() {
   }
 
   // Pass data to the page via props
-  return { props: { allBlogs } }
+  return { props: { allBlogs,allCont } }
 }
 
 
